@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  keiba_fetcher
+
+  SAM Template for keiba_fetcher
+
+Resources:
+  KeibaFetcherIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: "keiba_fetcher_for_lambda"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: "sqs:*"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action: "s3:*"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action: "logs:CreateLogGroup"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action: "logs:CreateLogStream"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action: "logs:PutLogEvents"
+                Resource: "*"
+      
+  KeibaFetcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Role: !GetAtt KeibaFetcherIamRole.Arn
+      Timeout: 900
+      MemorySize: 192
+      Events:
+        KeibaFetcher:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)

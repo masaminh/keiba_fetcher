@@ -1,0 +1,30 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pytest-cov = "*"
+flake8 = "*"
+autopep8 = "*"
+pydocstyle = "*"
+
+[packages]
+boto3 = "*"
+requests = "*"
+lxml = "*"
+bs4 = "*"
+more-itertools = "*"
+aws-xray-sdk = "*"
+python-dateutil = "*"
+python-dotenv = "*"
+
+[requires]
+python_version = "3.7"
+
+[scripts]
+test = "pytest -v --cov=src --cov-report=html --cov-branch"
+build = "sam build"
+start = "sam local invoke -e event.json KeibaFetcherFunction"
+package = "sam package --s3-bucket ${LAMBDA_BUCKET} --output-template-file package.yaml"
+deploy = "aws cloudformation deploy --template-file package.yaml --stack-name ${STACK_NAME} --capabilities CAPABILITY_IAM"
