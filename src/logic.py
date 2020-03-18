@@ -65,13 +65,13 @@ def main_loop(queue_name, bucket_name, nowtime):
                 except Exception as e:
                     logger.error(f'Exception occured. {e}')
         elif not calendar_added:
-            add_calandar_message(queue_name, nowtime)
+            add_calendar_message(queue_name, nowtime)
             calendar_added = True
         else:
             break
 
 
-def add_calandar_message(queue_name, nowtime):
+def add_calendar_message(queue_name, nowtime):
     """カレンダー取得メッセージを登録する.
 
     Arguments:
@@ -112,6 +112,7 @@ def fetch(uri, referer, bucket, nowtime):
     logger.info(f'fetching: {uri}')
     fetcher = get_fetcher(uri, referer)
     uris = fetcher.fetch(bucket, nowtime)
+    logger.info(f'fetching: next_uris: {uris}')
     return uris
 
 
@@ -309,17 +310,24 @@ class JbisRaceListFetcher:
             # S3未格納だった場合は古い日付を設定してフェッチを発火させる
             s3_time = datetime(2000, 1, 1, tzinfo=timezone.utc)
         else:
-            body = summary.get()['Body'].read()
-            soup = BeautifulSoup(body, 'lxml')
+            content = summary.get()['Body'].read()
+            soup = BeautifulSoup(content, 'lxml')
             h = list(soup.select('table.tbl-data-04 th'))
 
             if h:
-                s3_time = summary.last_modified if h[3] == '芝ダ' else nowtime
+                if h[3].string == '芝ダ' or h[2].string == '芝ダ':
+                    # 取得済みで出馬表が入っている
+                    s3_time = summary.last_modified
+                else:
+                    # 取得済みで結果が入っている
+                    uris = self.get_next_uris(content)
+                    s3_time = nowtime
             else:
+                # 取得済みだったけどよくわからないなら取得し直す
                 s3_time = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
-        # 23時間経過を閾値にする
-        if nowtime - s3_time > timedelta(seconds=23 * 60 * 60):
+        # 23時間経過を閾値にする (URIが入っている場合はそのまま返す)
+        if (uris == []) and (nowtime - s3_time > timedelta(seconds=23 * 3600)):
             content = fetch_to_s3(self._uri, bucket, key)
             uris = self.get_next_uris(content)
 
@@ -350,6 +358,7 @@ class JbisRaceListFetcher:
         headers = list(soup.select('table.tbl-data-04 th'))
 
         if headers and headers[2].string != '芝ダ':
+            # ↑重賞のみがリストに乗っているときは除外している↑
             link_index = 1 if headers[3].string == '芝ダ' else 0
             anchors = (list(x.select('td'))[link_index] for x in lines)
             relatives = ((x.a['href'] if x.a else None) for x in anchors)
@@ -507,10 +516,7 @@ class JbisHorseRecordFetcher:
             dateelms = list(soup.select('table.tbl-data-04 tbody th.sort-02'))
             dates = {x.string for x in dateelms}
             path = urlparse(self._referer).path
-            m = re.fullmatch(r'/race/(\d{8})/\d{3}/\d{2}.html', path)
-
-            if not m:
-                m = re.fullmatch(r'/race/result/(\d{8})/\d{3}/\d{2}/', path)
+            m = re.fullmatch(r'/race/result/(\d{8})/\d{3}/\d{2}/', path)
 
             if m:
                 s = m.group(1)
@@ -524,7 +530,7 @@ class JbisHorseRecordFetcher:
                     s3_time = summary.last_modified
 
             else:
-                # refererが期待外だった場合はs3保存時刻を使う
+                # refererが結果でなかった場合はs3保存時刻を使う
                 s3_time = summary.last_modified
 
         # 23時間経過を閾値にする
