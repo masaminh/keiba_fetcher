@@ -97,6 +97,13 @@ def test_get_fetcher_jbis_calendar():
     assert isinstance(fetcher, logic.JbisCalendarFetcher)
 
 
+def test_get_fetcher_jbis_race_list():
+    """get_fetcher()のテスト."""
+    fetcher = logic.get_fetcher(
+        'https://www.jbis.or.jp/race/calendar/20200322/231/', 'http://referer')
+    assert isinstance(fetcher, logic.JbisRaceListFetcher)
+
+
 def test_get_fetcher_unknown():
     """get_fetcher()のテスト."""
     fetcher = logic.get_fetcher('https://www.yahoo.co.jp', 'http://referer')
@@ -187,6 +194,109 @@ def test_get_jbis_calendar_fetcher_get_next_uris():
         'https://www.jbis.or.jp/race/calendar/?year=2019&month=02')
     uris = fetcher.get_next_uris(content)
     assert uris == ['https://www.jbis.or.jp/a', 'https://www.jbis.or.jp/b']
+
+
+def test_get_jbis_racelist_fetcher_fetch_result():
+    """JbisRaceListFetcher.fetch()のテスト."""
+    uri = 'https://www.jbis.or.jp/race/calendar/20200317/220/'
+    bucket = 'bucket'
+    key = 'jbis/race/calendar/20200317/220'
+    s3time = datetime(2020, 3, 18, 12, 0, 0)
+    nowtime = datetime(2020, 3, 19, 12, 0, 0)
+    contentstr = (
+        '<html>' +
+        '<meta http-equiv="Content-Type" content="text/html; ' +
+        'charset=Shift_JIS">' +
+        '<body><table class="tbl-data-04">' +
+        '<thead><tr><th>R</th><th>レース名</th><th>距離</th>' +
+        '<th></th><th></th><th></th><th></th><th></th></tr></thead>' +
+        '<tbody><tr><th>1</th><td><a href="/a">レース1</a></td><td>ダ1200m</td>' +
+        '<td></td><td></td><td></td><td></td><td></td></tr></tbody>' +
+        '</table></body></html>')
+    content = contentstr.encode('shift_jis')
+
+    fetcher = logic.JbisRaceListFetcher(uri)
+
+    with mock.patch('src.logic.get_s3_object') as m:
+        m.return_value.last_modified = s3time
+        body = mock.MagicMock(read=mock.MagicMock(return_value=content))
+        m.return_value.get.return_value = {'Body': body}
+        with mock.patch('src.logic.fetch_to_s3') as n:
+            n.return_value = content
+            uris = fetcher.fetch(bucket, nowtime)
+            m.assert_called_once_with(bucket, key)
+            n.assert_not_called()
+            assert uris == [
+                'https://www.jbis.or.jp/a']
+
+
+def test_get_jbis_racelist_fetcher_fetch_entry():
+    """JbisRaceListFetcher.fetch()のテスト."""
+    uri = 'https://www.jbis.or.jp/race/calendar/20200319/220/'
+    bucket = 'bucket'
+    key = 'jbis/race/calendar/20200319/220'
+    s3time = datetime(2020, 3, 18, 12, 0, 0)
+    nowtime = datetime(2020, 3, 19, 12, 0, 0)
+    contentstr = (
+        '<html>' +
+        '<meta http-equiv="Content-Type" content="text/html; ' +
+        'charset=Shift_JIS">' +
+        '<body><table class="tbl-data-04">' +
+        '<thead><tr><th>R</th><th>発走時刻</th><th>レース名</th>' +
+        '<th>芝ダ</th><th></th><th></th><th></th></tr></thead>' +
+        '<tbody><tr><th>1</th><td></td><td><a href="/a">レース1</a></td>' +
+        '<td>ダ</td>' +
+        '<td></td><td></td><td></td></tr></tbody>' +
+        '</table></body></html>')
+    content = contentstr.encode('shift_jis')
+
+    fetcher = logic.JbisRaceListFetcher(uri)
+
+    with mock.patch('src.logic.get_s3_object') as m:
+        m.return_value.last_modified = s3time
+        body = mock.MagicMock(read=mock.MagicMock(return_value=content))
+        m.return_value.get.return_value = {'Body': body}
+        with mock.patch('src.logic.fetch_to_s3') as n:
+            n.return_value = content
+            uris = fetcher.fetch(bucket, nowtime)
+            m.assert_called_once_with(bucket, key)
+            n.assert_called_once()
+            assert uris == [
+                'https://www.jbis.or.jp/a']
+
+
+def test_get_jbis_racelist_fetcher_fetch_stakes_entry():
+    """JbisRaceListFetcher.fetch()のテスト."""
+    uri = 'https://www.jbis.or.jp/race/calendar/20200322/231/'
+    bucket = 'bucket'
+    key = 'jbis/race/calendar/20200322/231'
+    s3time = datetime(2020, 3, 18, 12, 0, 0)
+    nowtime = datetime(2020, 3, 19, 12, 0, 0)
+    contentstr = (
+        '<html>' +
+        '<meta http-equiv="Content-Type" content="text/html; ' +
+        'charset=Shift_JIS">' +
+        '<body><table class="tbl-data-04">' +
+        '<thead><tr><th>R</th><th>レース名</th>' +
+        '<th>芝ダ</th><th></th><th></th><th></th></tr></thead>' +
+        '<tbody><tr><th>-</th><td>レース1</td>' +
+        '<td>ダ</td>' +
+        '<td></td><td></td><td></td></tr></tbody>' +
+        '</table></body></html>')
+    content = contentstr.encode('shift_jis')
+
+    fetcher = logic.JbisRaceListFetcher(uri)
+
+    with mock.patch('src.logic.get_s3_object') as m:
+        m.return_value.last_modified = s3time
+        body = mock.MagicMock(read=mock.MagicMock(return_value=content))
+        m.return_value.get.return_value = {'Body': body}
+        with mock.patch('src.logic.fetch_to_s3') as n:
+            n.return_value = content
+            uris = fetcher.fetch(bucket, nowtime)
+            m.assert_called_once_with(bucket, key)
+            n.assert_called_once()
+            assert uris == []
 
 
 def test_default_fetcher_fetch():
