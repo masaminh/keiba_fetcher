@@ -1,23 +1,26 @@
--i https://pypi.org/simple
+-i https://pypi.org/simple/
 aws-xray-sdk==2.4.3
-beautifulsoup4==4.8.1
+beautifulsoup4==4.9.3
 boto3==1.10.44
-botocore==1.13.44
+botocore==1.13.50
 bs4==0.0.1
-certifi==2019.11.28
+certifi==2020.12.5
 chardet==3.0.4
 docutils==0.15.2
 future==0.18.2
 idna==2.8
-jmespath==0.9.4
-jsonpickle==1.2
-lxml==4.4.2
+importlib-metadata==3.10.0 ; python_version < '3.8'
+jmespath==0.10.0
+jsonpickle==2.0.0
+lxml==4.6.3
 more-itertools==8.0.2
 python-dateutil==2.8.1
 python-dotenv==0.10.3
 requests==2.22.0
 s3transfer==0.2.1
-six==1.13.0
-soupsieve==1.9.5
-urllib3==1.25.7 ; python_version >= '3.4'
-wrapt==1.11.2
+six==1.15.0
+soupsieve==2.2.1 ; python_version >= '3.0'
+typing-extensions==3.7.4.3 ; python_version < '3.8'
+urllib3==1.25.11 ; python_version >= '3.4'
+wrapt==1.12.1
+zipp==3.4.1
