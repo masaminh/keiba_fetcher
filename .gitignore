@@ -115,3 +115,4 @@ dmypy.json
 .pyre/
 
 /package.yaml
+/src/requirements.txt
