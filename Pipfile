@@ -24,6 +24,6 @@ python_version = "3.7"
 
 [scripts]
 test = "pytest -v --cov=src --cov-report=html --cov-branch"
-build = "bash -c \"pipenv lock -r > src/requirements.txt && sam build\""
+build = "bash -c \"pipenv requirements > src/requirements.txt && sam build\""
 start = "sam local invoke -e event.json KeibaFetcherFunction"
 deploy = "sam deploy --resolve-s3 --stack-name keiba-fetcher --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset"
