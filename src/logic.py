@@ -135,7 +135,7 @@ class Fetcher(metaclass=ABCMeta):
 
 
 def get_horse_record_uri(uri: str) -> str:
-    """競走馬URIから競走成績URIを取得する
+    """競走馬URIから競走成績URIを取得する.
 
     Args:
         uri (str): 競走馬URI
