@@ -5,51 +5,31 @@ Description: >
 
   SAM Template for keiba_fetcher
 
+Parameters:
+  BucketName:
+    Type: String
+  QueueName:
+    Type: String
+
 Resources:
-  KeibaFetcherIamRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service: lambda.amazonaws.com
-              Action: "sts:AssumeRole"
-      Policies:
-        -
-          PolicyName: "keiba_fetcher_for_lambda"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              -
-                Effect: "Allow"
-                Action: "sqs:*"
-                Resource: "*"
-              -
-                Effect: "Allow"
-                Action: "s3:*"
-                Resource: "*"
-              -
-                Effect: "Allow"
-                Action: "logs:CreateLogGroup"
-                Resource: "*"
-              -
-                Effect: "Allow"
-                Action: "logs:CreateLogStream"
-                Resource: "*"
-              -
-                Effect: "Allow"
-                Action: "logs:PutLogEvents"
-                Resource: "*"
-      
   KeibaFetcherFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: app.lambda_handler
       Runtime: python3.7
-      Role: !GetAtt KeibaFetcherIamRole.Arn
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Action: "sqs:*"
+              Resource:
+                Fn::Sub: "arn:aws:sqs:*:*:${QueueName}"
+            - Effect: "Allow"
+              Action: "s3:*"
+              Resource:
+                - Fn::Sub: "arn:aws:s3:::${BucketName}"
+                - Fn::Sub: "arn:aws:s3:::${BucketName}/*"
       Timeout: 900
       MemorySize: 192
       Events:
@@ -57,3 +37,16 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: rate(1 hour)
+      Environment:
+        Variables:
+          BUCKET_NAME:
+            Ref: BucketName
+          QUEUE_NAME:
+            Ref: QueueName
+
+  KeibaFetcherFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: "/aws/lambda/${KeibaFetcherFunction}"
+      RetentionInDays: 30

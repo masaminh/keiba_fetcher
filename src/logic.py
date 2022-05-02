@@ -1,4 +1,5 @@
 """競馬コンテンツフェッチ処理のロジック部."""
+from abc import ABCMeta, abstractmethod
 import json
 import logging
 import re
@@ -116,7 +117,36 @@ def fetch(uri, referer, bucket, nowtime):
     return uris
 
 
-def get_fetcher(uri, referer):
+class Fetcher(metaclass=ABCMeta):
+    """フェッチ用抽象クラス."""
+
+    @abstractmethod
+    def fetch(self, bucket: str, nowtime: datetime):
+        """フェッチ処理.
+
+        Arguments:
+            bucket {str} -- 格納先バケット名
+            nowtime {datetime} -- 現時刻
+
+        Returns:
+            list(str) -- 次に処理するURIリスト
+        """
+        raise NotImplementedError()
+
+
+def get_horse_record_uri(uri: str) -> str:
+    """競走馬URIから競走成績URIを取得する
+
+    Args:
+        uri (str): 競走馬URI
+
+    Returns:
+        str: 競走成績URI
+    """
+    return uri + 'record/all/'
+
+
+def get_fetcher(uri, referer) -> Fetcher:
     """フェッチ用クラスオブジェクトを取得する.
 
     Arguments:
@@ -144,7 +174,8 @@ def get_fetcher(uri, referer):
         elif re.fullmatch(r'/horse/\d{10}/record/all/', path):
             fetcher = JbisHorseRecordFetcher(uri, referer)
         elif re.fullmatch(r'/horse/\d{10}/', path):
-            fetcher = JbisHorseRecordFetcher(uri + 'record/all/', referer)
+            fetcher = JbisHorseRecordFetcher(
+                get_horse_record_uri(uri), referer)
 
     if fetcher is None:
         fetcher = DefaultFetcher(uri)
@@ -218,7 +249,7 @@ def is_fetch_target_race_result(uri, now):
     return result
 
 
-class JbisCalendarFetcher:
+class JbisCalendarFetcher(Fetcher):
     """JBISのカレンダーフェッチ用クラス."""
 
     def __init__(self, uri):
@@ -281,7 +312,7 @@ class JbisCalendarFetcher:
         return uris
 
 
-class JbisRaceListFetcher:
+class JbisRaceListFetcher(Fetcher):
     """JBISのレース一覧のフェッチクラス."""
 
     def __init__(self, uri):
@@ -367,7 +398,7 @@ class JbisRaceListFetcher:
         return uris
 
 
-class JbisRaceResultFetcher:
+class JbisRaceResultFetcher(Fetcher):
     """JBISのレース結果のフェッチクラス."""
 
     def __init__(self, uri):
@@ -419,12 +450,12 @@ class JbisRaceResultFetcher:
 
         soup = BeautifulSoup(content, 'lxml')
         anchors = soup.select('table.tbl-data-04 tr td:nth-child(4)>a')
-        relatives = (x['href'] + 'record/all/' for x in anchors)
+        relatives = (get_horse_record_uri(x['href']) for x in anchors)
         uris = [urljoin(self._uri, x) for x in relatives]
         return uris
 
 
-class JbisRaceEntryFetcher:
+class JbisRaceEntryFetcher(Fetcher):
     """JBISのレース出走表のフェッチクラス."""
 
     def __init__(self, uri):
@@ -479,12 +510,12 @@ class JbisRaceEntryFetcher:
 
         soup = BeautifulSoup(content, 'lxml')
         anchors = soup.select('table.tbl-data-04 tr td:nth-child(3)>a')
-        relatives = (x['href'] + 'record/all/' for x in anchors)
+        relatives = (get_horse_record_uri(x['href']) for x in anchors)
         uris = [urljoin(self._uri, x) for x in relatives]
         return uris
 
 
-class JbisHorseRecordFetcher:
+class JbisHorseRecordFetcher(Fetcher):
     """JBISの馬情報のフェッチクラス."""
 
     def __init__(self, uri, referer):
@@ -562,7 +593,7 @@ class JbisHorseRecordFetcher:
         return []
 
 
-class DefaultFetcher:
+class DefaultFetcher(Fetcher):
     """デフォルトのフェッチクラス."""
 
     def __init__(self, uri):
